@@ -92,6 +92,32 @@ Example:
 
 ## Usage
 
+### Run headless (no window) via VBScript
+
+To prevent PowerShell or console windows from popping up (e.g., when scheduled), launch the export and processing commands via a VBScript that runs them hidden.
+
+Example `scheduled_task_script.vbs` (included in this repo):
+
+```vb
+Set objShell = CreateObject("WScript.Shell")
+
+' 1) Export alarms (runs hidden, waits until completion)
+command1 = """C:\Program Files (x86)\Schneider Electric\IGSS32\V14.0\GSS\alm.exe"" -fsiem -csv -file""C:\Users\lab\Documents\igss_alarms.csv"" -ts$-90 -te$ -all"
+objShell.Run command1, 0, True
+
+' 2) Process alarms (runs hidden, waits until completion)
+command2 = "powershell.exe -NoLogo -NonInteractive -WindowStyle Hidden -File ""C:\Users\lab\Documents\process_alarms.ps1"" -ExportAlarms -CsvPath ""C:\Users\lab\Documents\igss_alarms.csv"""
+objShell.Run command2, 0, True
+```
+
+- WindowStyle 0 ensures the commands run hidden.
+- The last parameter `True` makes the VBScript wait synchronously before running the next command.
+
+Schedule it with Windows Task Scheduler:
+- Program/script: `wscript.exe`
+- Add arguments: `"C:\Path\To\scheduled_task_script.vbs"`
+- Configure “Run whether user is logged on or not” and “Hidden”.
+
 ### Basic Usage
 
 ```powershell
@@ -162,6 +188,35 @@ Get-EventLog -LogName Application -Source "IGSS-Alarms" -Newest 10
 # Filter by Event ID
 Get-EventLog -LogName Application -Source "IGSS-Alarms" | Where-Object { $_.EventID -eq 1001 }
 ```
+
+## Wazuh SIEM Integration (XML Rules)
+
+This repository includes a Wazuh rules file `igss_alarms.xml` to process the Windows Application log events produced by this script.
+
+What it does:
+- Matches Application log events from `IGSS-Alarms`
+- Looks for specific Event IDs (e.g., 1001, 1002)
+- Adds context and groups alarms under `igss, scada`
+
+Install on the Wazuh manager:
+1. Copy `igss_alarms.xml` to your Wazuh manager:
+   - Recommended path: `/var/ossec/etc/rules/igss_alarms_rules.xml`
+2. Validate and restart Wazuh:
+   ```bash
+   sudo /var/ossec/bin/wazuh-logtest -t
+   sudo systemctl restart wazuh-manager
+   ```
+3. Test the rule:
+   ```bash
+   sudo /var/ossec/bin/wazuh-logtest
+   ```
+   Paste a sample Windows event content that includes:
+   - ProviderName: IGSS-Alarms
+   - EventID: 1001 (or 1002)
+
+Notes:
+- The rules in `igss_alarms.xml` rely on Windows EventChannel fields (e.g., `win.system.providerName`, `win.system.eventID`).
+- Ensure your Wazuh agent on Windows is collecting the Application event log (EventChannel input enabled).
 
 
 ## Error Handling

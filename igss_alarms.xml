@@ -1,0 +1,42 @@
+!-- IGSS Alarms Rules for Wazuh -->
+<!-- Place this file in: /var/ossec/etc/rules/local_rules.xml -->
+<!-- Or create a new file: /var/ossec/etc/rules/igss_alarms_rules.xml -->
+
+<group name="igss,scada,industrial">
+  
+<!-- Information level alarms -->
+<rule id="190110" level="7">
+  <if_sid>60601</if_sid>
+  <!-- Windows event fields -->
+  <field name="win.system.eventID">1001</field>
+  <field name="win.system.providerName">IGSS-Alarms</field>
+
+  <description>
+    IGSS: PLC Program Change detected - $(win.eventdata.ipAddress)
+  </description>
+
+  <group>igss,scada,information,</group>
+
+  <mitre>
+    <id>T0836</id>
+  </mitre>
+</rule>
+
+<!-- Information level alarms -->
+<rule id="190111" level="7">
+  <if_sid>60601</if_sid>
+  <!-- Windows event fields -->
+  <field name="win.system.eventID">1002</field>
+
+  <description>
+    AlarmText: PLC not running  - IP: $(ipAddress) 
+  </description>
+
+  <group>igss,scada,information,</group>
+
+  <mitre>
+    <id>T0836</id>
+  </mitre>
+</rule> 
+
+</group>
